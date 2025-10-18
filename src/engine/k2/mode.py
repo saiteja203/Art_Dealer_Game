@@ -45,6 +45,13 @@ def run(screen):
     clock = pygame.time.Clock()
     deck = Deck()
 
+    # optional audio (win sound)
+    try:
+        pygame.mixer.init()
+        win_snd = pygame.mixer.Sound("assets/audio/win.wav")
+    except Exception:
+        win_snd = None
+
     # hidden pattern for the round
     pattern_name, pattern_fn = random.choice(list(PATTERNS.items()))
     guesses = 0
@@ -52,12 +59,11 @@ def run(screen):
     last_hand = []
     win_frames = 0  # ~2s of confetti (120 frames @ 60 FPS)
 
-    # (optional) audio on win
-    # try:
-    #     pygame.mixer.init()
-    #     win_snd = pygame.mixer.Sound("assets/audio/win.wav")
-    # except Exception:
-    #     win_snd = None
+    def new_round(msg="New round! Press ENTER to deal 4 cards"):
+        nonlocal pattern_name, pattern_fn, guesses, last_hand, status
+        deck.reset(); guesses = 0; last_hand = []
+        pattern_name, pattern_fn = random.choice(list(PATTERNS.items()))
+        status = msg
 
     while True:
         for e in pygame.event.get():
@@ -66,8 +72,11 @@ def run(screen):
             if e.type == pygame.KEYDOWN:
                 if e.key == pygame.K_ESCAPE:
                     return  # back to menu
+                # R = manual new round (disabled during win animation)
+                if e.key == pygame.K_r and win_frames == 0:
+                    new_round()
+                # ENTER = deal/evaluate (disabled during win animation)
                 if e.key == pygame.K_RETURN and win_frames == 0:
-                    # deal and evaluate
                     if len(deck._cards) < 4:
                         deck.reset()
                     last_hand = deck.draw(4)
@@ -76,12 +85,13 @@ def run(screen):
                     if pattern_fn(last_hand):
                         status = f"🎉 You found it! Pattern = {pattern_name}"
                         win_frames = 120
-                        # if win_snd: win_snd.play()
+                        if win_snd: 
+                            try: win_snd.play()
+                            except Exception: pass
                     else:
                         if guesses >= 3:
                             status = f"Out of guesses. It was: {pattern_name} — New round!"
-                            deck.reset(); guesses = 0; last_hand = []
-                            pattern_name, pattern_fn = random.choice(list(PATTERNS.items()))
+                            new_round(msg="Press ENTER to deal 4 cards")
                         else:
                             status = f"Try again ({guesses}/3)"
 
@@ -89,15 +99,19 @@ def run(screen):
         if win_frames > 0:
             win_frames -= 1
             if win_frames == 0:
-                deck.reset(); guesses = 0; last_hand = []
-                pattern_name, pattern_fn = random.choice(list(PATTERNS.items()))
-                status = "Press ENTER to deal 4 cards"
+                new_round()
 
         # --- draw UI ---
         screen.fill((255, 240, 220))
         screen.blit(font.render("K-2 Mode (ESC to menu)", True, (40, 40, 40)), (32, 20))
         screen.blit(font.render(status, True, (30, 110, 30)), (32, 70))
         screen.blit(small.render("Find the dealer's pattern!", True, (60, 60, 60)), (32, 110))
+
+        # guesses left + footer controls
+        guesses_left = max(0, 3 - guesses)
+        screen.blit(small.render(f"Guesses left: {guesses_left}", True, (80, 80, 80)), (32, 136))
+        footer = small.render("ENTER: Deal   R: New Round   ESC: Menu", True, (60, 60, 60))
+        screen.blit(footer, (32, screen.get_height() - 48))
 
         # card area
         CARD_W, CARD_H = 120, 170
@@ -122,7 +136,7 @@ def run(screen):
         # confetti
         if win_frames > 0:
             import random as _r
-            for _ in range(120):  # a bit denser
+            for _ in range(120):
                 pygame.draw.circle(
                     screen,
                     (_r.randint(0, 255), _r.randint(0, 255), _r.randint(0, 255)),
