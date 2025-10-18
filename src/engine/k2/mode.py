@@ -2,7 +2,7 @@ import random, pygame, sys
 from engine.common.deck import Deck
 from engine.k2.patterns import PATTERNS
 
-# --- simple card drawing helpers ---
+#card drawing helpers
 SUIT_SYMBOLS = {"hearts": "♥", "diamonds": "♦", "clubs": "♣", "spades": "♠"}
 SUIT_COLOR = {
     "hearts": (200, 0, 0), "diamonds": (200, 0, 0),
@@ -36,16 +36,17 @@ def draw_card(surface, x, y, w, h, card, font_rank, font_suit):
 
 
 def run(screen):
-    # UI fonts (DejaVu has suit glyphs on most systems)
+    # UI fonts
     font = pygame.font.SysFont(None, 42)
     small = pygame.font.SysFont(None, 28)
+    # DejaVu usually has suit glyphs
     font_rank = pygame.font.SysFont("DejaVu Sans", 48)
     font_suit = pygame.font.SysFont("DejaVu Sans", 36)
 
     clock = pygame.time.Clock()
     deck = Deck()
 
-    # optional audio (win sound)
+    # audio- win sound
     try:
         pygame.mixer.init()
         win_snd = pygame.mixer.Sound("assets/audio/win.wav")
@@ -57,11 +58,13 @@ def run(screen):
     guesses = 0
     status = "Press ENTER to deal 4 cards"
     last_hand = []
-    win_frames = 0  # ~2s of confetti (120 frames @ 60 FPS)
+    win_frames = 0 
 
     def new_round(msg="New round! Press ENTER to deal 4 cards"):
         nonlocal pattern_name, pattern_fn, guesses, last_hand, status
-        deck.reset(); guesses = 0; last_hand = []
+        deck.reset()
+        guesses = 0
+        last_hand = []
         pattern_name, pattern_fn = random.choice(list(PATTERNS.items()))
         status = msg
 
@@ -85,17 +88,17 @@ def run(screen):
                     if pattern_fn(last_hand):
                         status = f"🎉 You found it! Pattern = {pattern_name}"
                         win_frames = 120
-                        if win_snd: 
+                        if win_snd:
                             try: win_snd.play()
                             except Exception: pass
                     else:
                         if guesses >= 3:
-                            status = f"Out of guesses. It was: {pattern_name} — New round!"
+                            status = f"Out of guesses. It was: {pattern_name}"
                             new_round(msg="Press ENTER to deal 4 cards")
                         else:
                             status = f"Try again ({guesses}/3)"
 
-        # after win animation, start fresh
+        # after win animation, start fresh (single reset path)
         if win_frames > 0:
             win_frames -= 1
             if win_frames == 0:
